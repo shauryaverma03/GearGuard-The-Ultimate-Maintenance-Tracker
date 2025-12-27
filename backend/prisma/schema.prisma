@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // Could be "mysql" if you opted for MySQL instead.
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -11,7 +11,8 @@ model User {
   id        Int      @id @default(autoincrement())
   name      String
   email     String   @unique
-  role      String
+  password  String   // Added for authentication
+  role      String   @default("Technician")
   createdAt DateTime @default(now())
   tasks     Task[]
 }
@@ -21,20 +22,40 @@ model Equipment {
   name         String
   description  String
   serialNumber String   @unique
-  status       String
+  status       String   @default("Operational") // Operational, Maintenance Required, Broken
+  category     String   @default("General")
+  location     String   @default("")
+  lastMaintained DateTime?
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   tasks        Task[]
+  events       MaintenanceEvent[]
 }
 
 model Task {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   title          String
   description    String
-  status         String
-  assignedDate   DateTime
+  status         String    @default("New") // New, In Progress, Repaired, Scrap
+  priority       String    @default("Medium") // Low, Medium, High, Critical
+  team           String    @default("Maintenance") // Mechanics, Electricians, IT, Maintenance
+  assignedDate   DateTime  @default(now())
   completionDate DateTime?
   equipmentId    Int
-  equipment      Equipment @relation(fields: [equipmentId], references: [id])
-  userId         Int
-  user           User      @relation(fields: [userId], references: [id])
+  equipment      Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  userId         Int?
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model MaintenanceEvent {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  eventDate   DateTime
+  eventType   String    @default("Preventive") // Preventive, Corrective, Inspection
+  equipmentId Int?
+  equipment   Equipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
 }

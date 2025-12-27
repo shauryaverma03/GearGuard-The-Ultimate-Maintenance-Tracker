@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,9 @@ import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import { useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, AlertCircle } from 'lucide-react'
+import { userApi } from '@/lib/api'
+import { useAuth } from '@/lib/hooks'
 
 // Dynamic import for scene
 const Scene = dynamic(() => import('@/components/canvas/Scene'), { ssr: false })
@@ -19,11 +21,13 @@ import { AuthVisual } from '@/components/illustrations/AuthVisual'
 export default function RegisterPage() {
     const router = useRouter()
     const containerRef = useRef<HTMLDivElement>(null)
+    const { login } = useAuth()
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     useGSAP(() => {
         // Animation for the split layout
@@ -42,14 +46,34 @@ export default function RegisterPage() {
         })
     }, { scope: containerRef })
 
-    const handleRegister = (e: React.FormEvent) => {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault()
+        setError(null)
+
+        // Validate passwords match
+        if (password !== confirmPassword) {
+            setError('Passwords do not match')
+            return
+        }
+
+        // Validate password length
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters long')
+            return
+        }
+
         setLoading(true)
-        // Simulate registration
-        setTimeout(() => {
-            setLoading(false)
+
+        try {
+            const user = await userApi.register({ name, email, password })
+            // Auto-login after registration
+            login(user)
             router.push('/dashboard')
-        }, 1000)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -89,6 +113,12 @@ export default function RegisterPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {error && (
+                            <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 text-destructive text-sm">
+                                <AlertCircle className="w-4 h-4" />
+                                {error}
+                            </div>
+                        )}
                         <form onSubmit={handleRegister} className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Full Name</label>
@@ -118,6 +148,7 @@ export default function RegisterPage() {
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
                                     required
+                                    minLength={6}
                                     className="bg-muted/50"
                                 />
                             </div>

@@ -11,41 +11,26 @@ import {
     DragOverlay
 } from '@dnd-kit/core'
 import {
-    arrayMove,
     SortableContext,
     sortableKeyboardCoordinates,
     verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { AlertCircle, Clock, MoreHorizontal } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { AlertCircle, MoreHorizontal, X, Loader2, Plus } from 'lucide-react'
+import { useTasks, useEquipment } from '@/lib/hooks'
+import type { Task, Equipment } from '@/lib/types'
 
-// Mock Data
 type Status = 'New' | 'In Progress' | 'Repaired' | 'Scrap'
 
-interface Request {
-    id: string
-    title: string
-    equipment: string
-    team: string
-    status: Status
-    priority: 'Low' | 'Medium' | 'High' | 'Critical'
-    date: string
-}
-
-const initialRequests: Request[] = [
-    { id: '1', title: 'Leaking Hydraulic Pump', equipment: 'CNC Machine 01', team: 'Mechanics', status: 'New', priority: 'High', date: 'Today' },
-    { id: '2', title: 'Monitor Flickering', equipment: 'Control Panel', team: 'Electricians', status: 'New', priority: 'Low', date: 'Yesterday' },
-    { id: '3', title: 'Belt Replacement', equipment: 'Conveyor 04', team: 'Mechanics', status: 'In Progress', priority: 'Medium', date: '2 days ago' },
-    { id: '4', title: 'Filter Change', equipment: 'HVAC Unit', team: 'Maintenance', status: 'Repaired', priority: 'Low', date: 'Last Week' },
-    { id: '5', title: 'Cracked Casing', equipment: 'Drill Press', team: 'Mechanics', status: 'Scrap', priority: 'Critical', date: 'Last Month' },
-]
-
 export default function KanbanPage() {
-    const [items, setItems] = useState<Request[]>(initialRequests)
+    const { data: tasks, loading, error, createTask, updateTaskStatus, refetch } = useTasks()
+    const { data: equipment } = useEquipment()
     const [activeId, setActiveId] = useState<string | null>(null)
+    const [showAddModal, setShowAddModal] = useState(false)
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -58,7 +43,7 @@ export default function KanbanPage() {
         setActiveId(event.active.id)
     }
 
-    const handleDragEnd = (event: any) => {
+    const handleDragEnd = async (event: any) => {
         const { active, over } = event
 
         if (!over) {
@@ -69,29 +54,41 @@ export default function KanbanPage() {
         const activeId = active.id
         const overId = over.id
 
-        // Find the container (status) we are dropping over
-        // If hovering over a card, find its status
-        // If hovering over a column, use that status
-
         let newStatus: Status | undefined
 
         if (['New', 'In Progress', 'Repaired', 'Scrap'].includes(overId)) {
             newStatus = overId as Status
         } else {
-            const overItem = items.find(item => item.id === overId)
-            if (overItem) newStatus = overItem.status
+            const overItem = tasks?.find(item => item.id.toString() === overId)
+            if (overItem) newStatus = overItem.status as Status
         }
 
         if (newStatus) {
-            setItems((items) => items.map(item =>
-                item.id === activeId ? { ...item, status: newStatus! } : item
-            ))
+            const taskId = parseInt(activeId)
+            const currentTask = tasks?.find(t => t.id === taskId)
+
+            if (currentTask && currentTask.status !== newStatus) {
+                try {
+                    await updateTaskStatus(taskId, newStatus)
+                } catch (err) {
+                    console.error('Failed to update task status:', err)
+                    refetch()
+                }
+            }
         }
 
         setActiveId(null)
     }
 
     const columns: Status[] = ['New', 'In Progress', 'Repaired', 'Scrap']
+
+    if (loading) {
+        return (
+            <div className="h-full flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        )
+    }
 
     return (
         <div className="h-full flex flex-col space-y-6">
@@ -100,10 +97,19 @@ export default function KanbanPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Maintenance Requests</h1>
                     <p className="text-muted-foreground">Drag and drop requests to update their status.</p>
                 </div>
-                <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all">
-                    + New Request
+                <button
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+                >
+                    <Plus className="w-4 h-4" /> New Request
                 </button>
             </div>
+
+            {error && (
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+                    Failed to load tasks. Make sure the backend server is running.
+                </div>
+            )}
 
             <DndContext
                 sensors={sensors}
@@ -112,41 +118,58 @@ export default function KanbanPage() {
                 onDragEnd={handleDragEnd}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-full overflow-auto pb-10">
-                    {columns.map((column) => (
-                        <div key={column} className="flex flex-col h-full bg-muted/30 rounded-2xl border border-border/50 p-4">
-                            <div className="flex items-center justify-between mb-4 px-2">
-                                <h2 className="font-bold text-lg">{column}</h2>
-                                <span className="bg-background/80 px-2 py-0.5 rounded-full text-xs font-bold border border-border/50">
-                                    {items.filter(i => i.status === column).length}
-                                </span>
-                            </div>
-
-                            <SortableContext
-                                id={column}
-                                items={items.filter(i => i.status === column).map(i => i.id)}
-                                strategy={verticalListSortingStrategy}
-                            >
-                                <div className="flex-1 space-y-3">
-                                    {items.filter(item => item.status === column).map((item) => (
-                                        <SortableItem key={item.id} id={item.id} item={item} />
-                                    ))}
+                    {columns.map((column) => {
+                        const columnTasks = tasks?.filter(t => t.status === column) || []
+                        return (
+                            <div key={column} id={column} className="flex flex-col h-full bg-muted/30 rounded-2xl border border-border/50 p-4">
+                                <div className="flex items-center justify-between mb-4 px-2">
+                                    <h2 className="font-bold text-lg">{column}</h2>
+                                    <span className="bg-background/80 px-2 py-0.5 rounded-full text-xs font-bold border border-border/50">
+                                        {columnTasks.length}
+                                    </span>
                                 </div>
-                            </SortableContext>
-                        </div>
-                    ))}
+
+                                <SortableContext
+                                    id={column}
+                                    items={columnTasks.map(t => t.id.toString())}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    <div className="flex-1 space-y-3 min-h-[100px]">
+                                        {columnTasks.map((item) => (
+                                            <SortableItem key={item.id} id={item.id.toString()} item={item} />
+                                        ))}
+                                        {columnTasks.length === 0 && (
+                                            <div className="text-center py-8 text-muted-foreground text-sm">
+                                                Drop tasks here
+                                            </div>
+                                        )}
+                                    </div>
+                                </SortableContext>
+                            </div>
+                        )
+                    })}
                 </div>
 
                 <DragOverlay>
-                    {activeId ? (
-                        <RequestCard item={items.find(i => i.id === activeId)!} isOverlay />
+                    {activeId && tasks ? (
+                        <RequestCard item={tasks.find(i => i.id.toString() === activeId)!} isOverlay />
                     ) : null}
                 </DragOverlay>
             </DndContext>
+
+            {/* Add Task Modal */}
+            {showAddModal && (
+                <AddTaskModal
+                    equipment={equipment || []}
+                    onClose={() => setShowAddModal(false)}
+                    onCreate={createTask}
+                />
+            )}
         </div>
     )
 }
 
-function SortableItem({ id, item }: { id: string, item: Request }) {
+function SortableItem({ id, item }: { id: string, item: Task }) {
     const {
         attributes,
         listeners,
@@ -167,11 +190,11 @@ function SortableItem({ id, item }: { id: string, item: Request }) {
     )
 }
 
-function RequestCard({ item, isOverlay }: { item: Request, isOverlay?: boolean }) {
+function RequestCard({ item, isOverlay }: { item: Task, isOverlay?: boolean }) {
     return (
         <Card className={`cursor-grab active:cursor-grabbing hover:shadow-lg transition-all border-l-4 ${item.priority === 'Critical' ? 'border-l-destructive' :
-                item.priority === 'High' ? 'border-l-orange-500' :
-                    item.priority === 'Medium' ? 'border-l-yellow-500' : 'border-l-blue-500'
+            item.priority === 'High' ? 'border-l-orange-500' :
+                item.priority === 'Medium' ? 'border-l-yellow-500' : 'border-l-blue-500'
             } ${isOverlay ? 'shadow-2xl scale-105 rotate-2' : ''}`}>
             <CardContent className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
@@ -179,20 +202,170 @@ function RequestCard({ item, isOverlay }: { item: Request, isOverlay?: boolean }
                     <button className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="w-4 h-4" /></button>
                 </div>
                 <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{item.equipment}</span>
+                    <span className="font-medium text-foreground">{item.equipment?.name || 'Unknown Equipment'}</span>
                     <span>{item.team}</span>
                 </div>
                 <div className="flex items-center justify-between pt-2">
                     <div className="flex -space-x-2">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary">JD</div>
+                        <div className="w-6 h-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary">
+                            {item.user?.name?.[0] || 'U'}
+                        </div>
                     </div>
                     {item.priority === 'Critical' && (
                         <div className="flex items-center gap-1 text-destructive font-bold text-[10px] uppercase">
-                            <AlertCircle className="w-3 h-3" /> Overdue
+                            <AlertCircle className="w-3 h-3" /> Critical
                         </div>
                     )}
                 </div>
             </CardContent>
         </Card>
+    )
+}
+
+interface AddTaskModalProps {
+    equipment: Equipment[]
+    onClose: () => void
+    onCreate: (data: any) => Promise<any>
+}
+
+function AddTaskModal({ equipment, onClose, onCreate }: AddTaskModalProps) {
+    const [title, setTitle] = useState('')
+    const [description, setDescription] = useState('')
+    const [priority, setPriority] = useState('Medium')
+    const [team, setTeam] = useState('Maintenance')
+    const [equipmentId, setEquipmentId] = useState<number | null>(equipment[0]?.id || null)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+
+        if (!equipmentId) {
+            setError('Please select equipment')
+            return
+        }
+
+        setLoading(true)
+        setError(null)
+
+        try {
+            await onCreate({
+                title,
+                description,
+                priority,
+                team,
+                equipmentId,
+                status: 'New'
+            })
+            onClose()
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create task')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-auto">
+                <div className="flex items-center justify-between p-6 border-b border-border">
+                    <h2 className="text-xl font-bold">New Maintenance Request</h2>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    {error && (
+                        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Title *</label>
+                        <Input
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Leaking Hydraulic Pump"
+                            required
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Description</label>
+                        <Input
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Describe the issue..."
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Equipment *</label>
+                        <select
+                            value={equipmentId || ''}
+                            onChange={(e) => setEquipmentId(parseInt(e.target.value))}
+                            className="w-full h-10 px-3 rounded-lg border border-border bg-background"
+                            required
+                        >
+                            <option value="">Select Equipment</option>
+                            {equipment.map(eq => (
+                                <option key={eq.id} value={eq.id}>{eq.name} ({eq.serialNumber})</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Priority</label>
+                            <select
+                                value={priority}
+                                onChange={(e) => setPriority(e.target.value)}
+                                className="w-full h-10 px-3 rounded-lg border border-border bg-background"
+                            >
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Team</label>
+                            <select
+                                value={team}
+                                onChange={(e) => setTeam(e.target.value)}
+                                className="w-full h-10 px-3 rounded-lg border border-border bg-background"
+                            >
+                                <option value="Maintenance">Maintenance</option>
+                                <option value="Mechanics">Mechanics</option>
+                                <option value="Electricians">Electricians</option>
+                                <option value="IT">IT</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onClose}
+                            className="flex-1"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="premium"
+                            disabled={loading}
+                            className="flex-1"
+                        >
+                            {loading ? 'Creating...' : 'Create Request'}
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
     )
 }

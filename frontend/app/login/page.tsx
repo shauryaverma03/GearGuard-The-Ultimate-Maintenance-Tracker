@@ -10,7 +10,9 @@ import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import { useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, AlertCircle } from 'lucide-react'
+import { userApi } from '@/lib/api'
+import { useAuth } from '@/lib/hooks'
 
 // Dynamic import for scene
 const Scene = dynamic(() => import('@/components/canvas/Scene'), { ssr: false })
@@ -19,9 +21,11 @@ import { AuthVisual } from '@/components/illustrations/AuthVisual'
 export default function LoginPage() {
     const router = useRouter()
     const containerRef = useRef<HTMLDivElement>(null)
+    const { login } = useAuth()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     useGSAP(() => {
         gsap.from('.visual-side', {
@@ -39,14 +43,20 @@ export default function LoginPage() {
         })
     }, { scope: containerRef })
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
-        // Simulate login bypass
-        setTimeout(() => {
-            setLoading(false)
+        setError(null)
+
+        try {
+            const response = await userApi.login({ email, password })
+            login(response.user)
             router.push('/dashboard')
-        }, 500)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.')
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -87,6 +97,12 @@ export default function LoginPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {error && (
+                            <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 text-destructive text-sm">
+                                <AlertCircle className="w-4 h-4" />
+                                {error}
+                            </div>
+                        )}
                         <form onSubmit={handleLogin} className="space-y-6">
                             <div className="space-y-2">
                                 <label htmlFor="email" className="text-sm font-medium">Email</label>
