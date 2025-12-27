@@ -275,7 +275,7 @@ function EquipmentModal({ equipment, onClose, onCreate, onUpdate }: EquipmentMod
                             <label className="text-sm font-medium">Status</label>
                             <select
                                 value={status}
-                                onChange={(e) => setStatus(e.target.value)}
+                                onChange={(e) => setStatus(e.target.value as typeof status)}
                                 className="w-full h-10 px-3 rounded-lg border border-border bg-background"
                             >
                                 <option value="Operational">Operational</option>
