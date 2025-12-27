@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Could be "mysql" if you opted for MySQL instead.
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  role      String
+  createdAt DateTime @default(now())
+  tasks     Task[]
+}
+
+model Equipment {
+  id           Int      @id @default(autoincrement())
+  name         String
+  description  String
+  serialNumber String   @unique
+  status       String
+  createdAt    DateTime @default(now())
+  tasks        Task[]
+}
+
+model Task {
+  id             Int      @id @default(autoincrement())
+  title          String
+  description    String
+  status         String
+  assignedDate   DateTime
+  completionDate DateTime?
+  equipmentId    Int
+  equipment      Equipment @relation(fields: [equipmentId], references: [id])
+  userId         Int
+  user           User      @relation(fields: [userId], references: [id])
+}
