@@ -2,8 +2,6 @@
 
 **GearGuard** is your ultimate solution for seamless equipment maintenance management. Monitor, schedule, and optimize your equipment upkeep to ensure everything runs at peak performance, all in one intuitive platform!
 
-![GearGuard Logo Placeholder](https://via.placeholder.com/800x400.png?text=GearGuard+Logo)
-
 ---
 
 ## 🌟 Features
