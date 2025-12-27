@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Royal Palette - Light Mode */
+  --background: 60 30% 96%;
+  /* Creamy White */
+  --foreground: 145 80% 10%;
+  /* Deep Royal Green */
+
+  --card: 60 30% 98%;
+  --card-foreground: 145 80% 10%;
+
+  --popover: 60 30% 98%;
+  --popover-foreground: 145 80% 10%;
+
+  --primary: 43 96% 50%;
+  /* Royal Gold */
+  --primary-foreground: 145 80% 10%;
+
+  --secondary: 142 70% 90%;
+  /* Light Green */
+  --secondary-foreground: 145 80% 10%;
+
+  --muted: 60 20% 90%;
+  --muted-foreground: 145 40% 40%;
+
+  --accent: 43 96% 90%;
+  /* Light Gold */
+  --accent-foreground: 145 80% 10%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 60 30% 98%;
+
+  --border: 145 30% 80%;
+  --input: 145 30% 80%;
+  --ring: 43 96% 50%;
+
+  --radius: 1rem;
+}
+
+.dark {
+  /* Royal Palette - Dark Mode */
+  --background: 145 80% 5%;
+  /* Very Dark Green */
+  --foreground: 60 30% 90%;
+  /* Cream - High Contrast */
+
+  --card: 145 70% 8%;
+  --card-foreground: 60 30% 90%;
+
+  --popover: 145 70% 8%;
+  --popover-foreground: 60 30% 90%;
+
+  --primary: 43 96% 50%;
+  /* Gold */
+  --primary-foreground: 145 90% 10%;
+
+  --secondary: 145 60% 15%;
+  --secondary-foreground: 60 30% 90%;
+
+  --muted: 145 50% 20%;
+  --muted-foreground: 60 10% 80%;
+  /* Lighter muted text for visibility */
+
+  --accent: 43 96% 20%;
+  --accent-foreground: 60 30% 90%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 60 30% 90%;
+
+  --border: 145 50% 25%;
+  /* Lighter borders for definition */
+  --input: 145 50% 25%;
+  --ring: 43 96% 50%;
+}
+
+/* Themes */
+
+/* Blue */
+[data-theme='blue'] {
+  --primary: 221 83% 53%;
+  --primary-foreground: 210 40% 98%;
+  --ring: 221 83% 53%;
+}
+
+/* Purple */
+[data-theme='purple'] {
+  --primary: 262 83% 58%;
+  --primary-foreground: 210 40% 98%;
+  --ring: 262 83% 58%;
+}
+
+/* Emerald */
+[data-theme='emerald'] {
+  --primary: 142 76% 36%;
+  --primary-foreground: 356 29% 95%;
+  --ring: 142 76% 36%;
+}
+
+/* Crimson */
+[data-theme='crimson'] {
+  --primary: 347 77% 50%;
+  --primary-foreground: 356 29% 95%;
+  --ring: 347 77% 50%;
+}
+
+/* Slate */
+[data-theme='slate'] {
+  --primary: 215 16% 47%;
+  --primary-foreground: 222 47% 11%;
+  --ring: 215 16% 47%;
+}
+
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-inter), ui-monospace, monospace;
+}
+
+body {
+  @apply bg-background text-foreground transition-colors duration-300;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
+}
